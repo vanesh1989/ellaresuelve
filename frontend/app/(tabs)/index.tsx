@@ -252,7 +252,7 @@ function LocationModal({ visible, current, onClose, onSave }: { visible: boolean
 
 const useStyles = makeStyles((colors) => ({
   root: { flex: 1, backgroundColor: colors.surface },
-  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
   headerText: { flex: 1, gap: 2 },
   eyebrow: { color: colors.muted, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
   greeting: { color: colors.onSurface, fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },

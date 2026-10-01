@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 import logging
 import os
+import re
 import uuid
 
 import bcrypt
@@ -21,7 +22,7 @@ load_dotenv(ROOT_DIR / ".env")
 mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
-SECRET = os.environ.get("JWT_SECRET", "maestrasred-local-secret")
+SECRET = os.environ["JWT_SECRET"]  # required, no fallback: refuse to boot without it
 
 # Free tier: users on the free plan only see the best-rated professionals.
 FREE_MIN_RATING = 4.5
@@ -320,12 +321,13 @@ async def providers(
     if category:
         query["category"] = category
     if search:
+        safe = re.escape(search)
         query["$or"] = [
-            {"name": {"$regex": search, "$options": "i"}},
-            {"bio": {"$regex": search, "$options": "i"}},
+            {"name": {"$regex": safe, "$options": "i"}},
+            {"bio": {"$regex": safe, "$options": "i"}},
         ]
     if commune:
-        query["commune"] = {"$regex": commune, "$options": "i"}
+        query["commune"] = {"$regex": re.escape(commune), "$options": "i"}
     items = await db.providers.find(query, {"_id": 0}).sort([("rating", -1), ("reviews_count", -1)]).to_list(100)
     return {"providers": items, "limited": limited}
 
@@ -346,11 +348,17 @@ async def provider(provider_id: str, user: dict = Depends(current_user)):
 
 @api_router.post("/providers/{provider_id}/reviews")
 async def review(provider_id: str, data: ReviewCreate, user: dict = Depends(current_user)):
-    if not await db.providers.find_one({"id": provider_id}, {"_id": 0}):
+    provider = await db.providers.find_one({"id": provider_id}, {"_id": 0})
+    if not provider:
         raise HTTPException(status_code=404, detail="Profesional no encontrada")
+    if provider.get("owner_id") == user["id"]:
+        raise HTTPException(status_code=400, detail="No puedes reseñar tu propio perfil")
+    if await db.reviews.find_one({"provider_id": provider_id, "user_id": user["id"]}, {"_id": 0}):
+        raise HTTPException(status_code=409, detail="Ya publicaste una reseña para esta profesional")
     review_doc = {
         "id": str(uuid.uuid4()),
         "provider_id": provider_id,
+        "user_id": user["id"],
         "user_name": user["name"],
         "rating": data.rating,
         "comment": data.comment,

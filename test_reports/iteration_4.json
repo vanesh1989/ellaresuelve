@@ -1,0 +1,36 @@
+{
+  "summary": "Iteración 4 - todos los fixes verificados E2E. Backend: 46 passed + 1 skipped (11 nuevos en test_iteration4.py + regresión completa). JWT_SECRET: login emite tokens nuevos válidos (GET /api/auth/me 200); token forjado con el secreto antiguo 'maestrasred-local-secret' -> 401 en GET /api/providers; token basura -> 401. Reseñas: duplicada -> 409 ('Ya publicaste una reseña'), dueño reseñando su propio perfil -> 400 ('No puedes reseñar tu propio perfil'), reseña nueva válida -> 200 sin _id y recomputa promedio/count desde docs reales. ReDoS: search=(a+)+, (a|a)*$, 200 chars+'!' y commune=(a+)+ responden 200 en <5s (re.escape OK); búsqueda normal 'Ana' sigue funcionando. Frontend (390x844): BUG VISUAL PRINCIPAL RESUELTO - banner free-plan-banner en Inicio y Buscar en layout columna: fila ícono ribbon + 'Plan gratuito' (sin cortes, scrollWidth==clientWidth), descripción completa a ancho completo (318px), botón naranjo 'Hazte Premium · $3.000/mes' a ancho completo (318/350px = 91% del banner, resto es padding 16px), CTA debajo de la descripción. Regresión UI OK: login free/premium, 'Mejor evaluadas' (5 cards), header avatar circular con gap 12px del saludo, PhotoPicker pequeño (size=46) sin texto 'Foto', tabs Inicio/Buscar/Chats navegan, banner ausente para premium. 0 console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/providers/{id}", "issue": "Cambio de comportamiento no declarado en el review_request: ahora requiere auth (401 sin Bearer) - en iteración 3 era público. Es una mejora de seguridad coherente con la auditoría, pero invalida el deep link público. Tests legacy actualizados acorde.", "priority": "LOW"},
+      {"endpoint": "GET /api/providers/{id}", "issue": "Carry-over de iteración 3: ratings/reviews_count seed fabricados sin docs de reseña; la primera reseña real recomputa desde docs reales (p-daniela 4.2/18 -> 4.0/1). Sembrar reseñas coherentes o tolerar.", "priority": "LOW"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iteration4.py", "/app/backend/tests/test_maestrasred.py", "/app/backend/tests/test_iteration3.py", "/app/test_reports/pytest/pytest_results.xml", "/app/test_reports/shots/banner_home.png", "/app/test_reports/shots/banner_search.png", "/app/test_reports/shots/home_free.png", "/app/test_reports/shots/search_free.png", "/app/test_reports/shots/home_premium.png"],
+  "action_items": [
+    "Ninguno bloqueante. Opcional: documentar que GET /api/providers/{id} pasó a ser auth-gated (rompe deep links públicos a /provider/[id] - ahora reciben 401 y la app muestra notice en vez de redirect a /login)",
+    "Carry-over: sembrar reseñas coherentes con rating/reviews_count de los seeds"
+  ],
+  "critical_code_review_comments": [
+    "server.py:25 - JWT_SECRET con os.environ['JWT_SECRET'] sin fallback: el boot falla rápido si falta la var; secreto antiguo no queda en el código (grep limpio). Correcto.",
+    "server.py:354-357 - orden correcto de validaciones de reseña: 404 provider -> 400 propio perfil -> 409 duplicada; mensajes en español apropiados.",
+    "server.py:324,330 - re.escape aplicado tanto a search como a commune antes de $regex; ReDoS mitigado (verificado con payloads hostiles <2s).",
+    "ui.tsx FreeBanner (líneas 232-247): columna con bannerHeader row (ícono 40px + título), texto full-width, botón minHeight 46 (touch target OK). Sin regresiones de layout.",
+    "photo-picker.tsx:60 - texto 'Foto' solo si size>=60; el header usa size=46. Correcto.",
+    "Tests legacy actualizados por cambios de contrato intencionales (auth-gate en provider detail + reglas de reseña) - no eran bugs de la app."
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration4.py (nuevo)", "/app/backend/tests/test_maestrasred.py (3 tests legacy actualizados al nuevo contrato: auth en GET /providers/{id} y reglas de reseña 400/409)"],
+  "success_rate": {"backend": "100% (46/46 ejecutados; 1 skipped por dedupe 409 esperado en re-run)", "frontend": "100% (banner Home+Buscar verificado visual y programáticamente; regresión completa OK)"},
+  "seed_data_creation": "TEST data: reseña 'TEST I4 excelente clase' (5★) de un TEST_free user en p-camila; reseña 'TEST I4 buena profe' (4★) de clienta en p-daniela (recomputó 4.0/1); reseñas TEST en 'TEST Paula Test' (5★ y 4★ -> 4.5/2); 2 usuarios TEST registrados.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Tras el cambio de JWT_SECRET solo sirven tokens nuevos (login fresco). GET /api/providers/{id} ahora requiere Bearer (tests sin header reciben 401, no 200/404). Reseñas: 1 por usuario/profesional (409) y dueño no puede reseñar su perfil (400) - los tests de average necesitan 2 usuarios distintos al dueño. reviews_count/rating se recomputan desde docs reales al primer review (seeds fabricados). Screenshots del banner en /app/test_reports/shots/. En Playwright: element.screenshot no acepta quality (solo page.screenshot jpeg); usar :visible por pantallas ocultas de expo-router.",
+  "rca_of_issue": "Bug visual del banner RESUELTO: el diseño anterior en una sola fila comprimía ícono+título+texto+botón cortando 'Plan gratuito' -> rediseño a columna verificado: título sin truncamiento (scrollWidth==clientWidth), descripción 318px full-width, CTA 318px full-width debajo del texto, en Inicio y Buscar. Hallazgo secundario: GET /api/providers/{id} pasó de público a auth-gated entre iteraciones (RCA del cambio: respuesta de E1 al action item de iteración 3 sobre auth-gating; efecto: tests legacy que llamaban sin Bearer fallaban con 401 - tests actualizados, comportamiento nuevo es el deseado)."
+}

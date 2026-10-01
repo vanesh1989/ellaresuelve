@@ -55,13 +55,13 @@ const useStyles = makeStyles((colors) => ({
   primaryButtonText: { color: colors.onBrandPrimary, fontSize: 15, fontWeight: "700" },
   notice: { marginHorizontal: 20, marginTop: 8, minHeight: 44, borderRadius: 12, paddingHorizontal: 13, backgroundColor: colors.info, flexDirection: "row", alignItems: "center", gap: 8 },
   noticeText: { color: colors.onInfo, fontSize: 13, flex: 1 },
-  banner: { backgroundColor: colors.brandTertiary, borderRadius: 18, padding: 16, flexDirection: "row", gap: 12, alignItems: "center" },
-  bannerIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.brandPrimary, alignItems: "center", justifyContent: "center" },
-  bannerCopy: { flex: 1, gap: 2 },
-  bannerTitle: { color: colors.onBrandTertiary, fontSize: 14, fontWeight: "800" },
-  bannerText: { color: colors.onBrandTertiary, fontSize: 12, lineHeight: 17, opacity: 0.85 },
-  bannerButton: { minHeight: 40, borderRadius: 20, paddingHorizontal: 14, backgroundColor: colors.brandSecondary, alignItems: "center", justifyContent: "center" },
-  bannerButtonText: { color: colors.onBrandSecondary, fontSize: 12, fontWeight: "800" },
+  banner: { backgroundColor: colors.brandTertiary, borderRadius: 18, padding: 16, gap: 12 },
+  bannerHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bannerIcon: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.brandPrimary, alignItems: "center", justifyContent: "center" },
+  bannerTitle: { color: colors.onBrandTertiary, fontSize: 15, fontWeight: "800" },
+  bannerText: { color: colors.onBrandTertiary, fontSize: 13, lineHeight: 19, opacity: 0.85 },
+  bannerButton: { minHeight: 46, borderRadius: 14, backgroundColor: colors.brandSecondary, alignItems: "center", justifyContent: "center" },
+  bannerButtonText: { color: colors.onBrandSecondary, fontSize: 14, fontWeight: "800" },
   categoryCard: { width: 148, height: 96, borderRadius: 16, overflow: "hidden", justifyContent: "flex-end", padding: 10, gap: 6 },
   categoryScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.38)" },
   categoryIconWrap: { width: 30, height: 30, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
@@ -234,13 +234,13 @@ export function FreeBanner({ onUpgrade, busy }: { onUpgrade: () => void; busy?: 
   const { colors } = useTheme();
   return (
     <View testID="free-plan-banner" style={styles.banner}>
-      <View style={styles.bannerIcon}><Ionicons name="ribbon-outline" size={20} color={colors.onBrandPrimary} /></View>
-      <View style={styles.bannerCopy}>
+      <View style={styles.bannerHeader}>
+        <View style={styles.bannerIcon}><Ionicons name="ribbon-outline" size={20} color={colors.onBrandPrimary} /></View>
         <Text style={styles.bannerTitle}>Plan gratuito</Text>
-        <Text style={styles.bannerText}>Ves solo las mejor evaluadas (4,5★+). Premium por $3.000/mes.</Text>
       </View>
+      <Text style={styles.bannerText}>Ves solo las profesionales mejor evaluadas (4,5★ o más). Con Premium desbloqueas el directorio completo.</Text>
       <Pressable testID="upgrade-button" onPress={onUpgrade} disabled={busy} style={styles.bannerButton}>
-        {busy ? <ActivityIndicator size="small" color={colors.onBrandSecondary} /> : <Text style={styles.bannerButtonText}>Hazte Premium</Text>}
+        {busy ? <ActivityIndicator size="small" color={colors.onBrandSecondary} /> : <Text style={styles.bannerButtonText}>Hazte Premium · $3.000/mes</Text>}
       </Pressable>
     </View>
   );

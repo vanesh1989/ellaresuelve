@@ -103,15 +103,19 @@ class TestProviders:
         assert r.status_code == 200
         assert len(r.json()["providers"]) > 0
 
-    def test_provider_detail_with_reviews(self, api_client):
+    def test_provider_detail_with_reviews(self, api_client, premium_token):
+        # Iteración 4: endpoint is now auth-gated (401 without Bearer)
         r = api_client.get(f"{BASE_URL}/api/providers/p-ana")
+        assert r.status_code == 401
+        r = api_client.get(f"{BASE_URL}/api/providers/p-ana", headers=auth_headers(premium_token))
         assert r.status_code == 200
         data = r.json()
         assert data["name"] == "Ana Morales"
         assert "reviews" in data and isinstance(data["reviews"], list)
 
-    def test_provider_not_found_404(self, api_client):
-        r = api_client.get(f"{BASE_URL}/api/providers/no-existe-123")
+    def test_provider_not_found_404(self, api_client, premium_token):
+        r = api_client.get(f"{BASE_URL}/api/providers/no-existe-123",
+                           headers=auth_headers(premium_token))
         assert r.status_code == 404
 
     def test_create_provider_invalid_rate_422(self, api_client, premium_token):
@@ -124,8 +128,8 @@ class TestProviders:
 
 # ---------- Create provider + reviews: average rating update ----------
 class TestProviderLifecycle:
-    def test_create_review_average_flow(self, api_client, premium_token):
-        # Create provider (persistence check)
+    def test_create_review_average_flow(self, api_client, premium_token, free_token):
+        # Create provider (persistence check) - owned by the premium user
         payload = {"name": "TEST Paula Test", "category": "Jardinera",
                    "bio": "TEST provider creada por tests automatizados.",
                    "rate": 15000, "city": "Santiago", "commune": "Providencia",
@@ -139,21 +143,40 @@ class TestProviderLifecycle:
         assert created["initials"] == "TP"
         pid = created["id"]
 
-        r2 = api_client.get(f"{BASE_URL}/api/providers/{pid}")
+        r2 = api_client.get(f"{BASE_URL}/api/providers/{pid}", headers=auth_headers(premium_token))
         assert r2.status_code == 200
         assert r2.json()["whatsapp"] == payload["whatsapp"]
 
-        # Reviews update average and count
+        # Iteración 4: owner cannot review own profile (400); one review per
+        # user (409) -> use two distinct non-owner users for the average flow.
+        r_own = api_client.post(f"{BASE_URL}/api/providers/{pid}/reviews",
+                                json={"rating": 5, "comment": "TEST owner review"},
+                                headers=auth_headers(premium_token))
+        assert r_own.status_code == 400
+
+        second_email = f"TEST_rev2_{uuid.uuid4().hex[:8]}@maestrasred.cl"
+        reg = api_client.post(f"{BASE_URL}/api/auth/register",
+                              json={"email": second_email, "password": "prueba123",
+                                    "name": "Test Reviewer Dos"})
+        assert reg.status_code == 200, reg.text
+        second_token = reg.json()["token"]
+
         r1 = api_client.post(f"{BASE_URL}/api/providers/{pid}/reviews",
                              json={"rating": 5, "comment": "TEST excelente servicio"},
-                             headers=auth_headers(premium_token))
+                             headers=auth_headers(free_token))
         assert r1.status_code == 200
         assert r1.json()["rating"] == 5
         r2 = api_client.post(f"{BASE_URL}/api/providers/{pid}/reviews",
                              json={"rating": 4, "comment": "TEST muy buen trabajo"},
-                             headers=auth_headers(premium_token))
+                             headers=auth_headers(second_token))
         assert r2.status_code == 200
-        after = api_client.get(f"{BASE_URL}/api/providers/{pid}").json()
+        # Duplicate review from same user -> 409
+        r_dup = api_client.post(f"{BASE_URL}/api/providers/{pid}/reviews",
+                                json={"rating": 1, "comment": "TEST duplicada"},
+                                headers=auth_headers(free_token))
+        assert r_dup.status_code == 409
+        after = api_client.get(f"{BASE_URL}/api/providers/{pid}",
+                               headers=auth_headers(premium_token)).json()
         assert after["rating"] == 4.5, f"expected 4.5 got {after['rating']}"
         assert after["reviews_count"] == 2
         assert len(after["reviews"]) == 2

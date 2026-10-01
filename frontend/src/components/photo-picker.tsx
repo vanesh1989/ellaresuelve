@@ -57,7 +57,7 @@ export function PhotoPicker({ testID, size = 96, localUri, photoPath, photoUrl, 
             ) : (
               <>
                 <Ionicons name="camera-outline" size={size * 0.32} color={colors.onBrandPrimary} />
-                <Text style={styles.placeholderText}>Foto</Text>
+                {size >= 60 ? <Text style={styles.placeholderText}>Foto</Text> : null}
               </>
             )}
           </View>

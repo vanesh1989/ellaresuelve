@@ -19,6 +19,8 @@ App móvil (Expo) donde usuarias buscan por ubicación a las mejores profesional
 - 2026-10-01: **Fotos de perfil** (clientas y profesionales) con Emergent Object Storage: POST /api/upload, GET /api/files/{path} (Bearer o ?token=), PUT /api/users/me/photo; PhotoPicker con flujo de permisos completo; avatares con foto en home, tarjetas, perfil y chat.
 - 2026-10-01: **Chat bidireccional**: la cuenta que publica un servicio recibe y responde chats (badge "CLIENTA", role=professional); conversations guardan user_name/owner_id/provider_photo.
 - 2026-10-01: Banner Premium muestra $3.000/mes (upgrade sigue mock por decisión de la usuaria).
+- 2026-10-01: **Auditoría de seguridad** aplicada: JWT_SECRET obligatorio desde env (sin fallback, tokens viejos invalidados), reseñas con dedupe (409) y bloqueo de auto-reseña (400), re.escape en búsquedas (anti-ReDoS), detalle de provider requiere auth. Queda intencional: upgrade mock (SEC-002, pendiente pagos reales).
+- 2026-10-01: **Rediseño banner Plan gratuito** (bug visual reportado): layout en columna, texto completo, CTA ancho completo. Ajustes: gap en header home, PhotoPicker pequeño sin texto.
 
 ## Backlog
 - **P1**: Premium con pago real (RevenueCat gestionado por Emergent, ~$3.000/mes) — usuaria prefirió mock por ahora.
@@ -29,3 +31,4 @@ App móvil (Expo) donde usuarias buscan por ubicación a las mejores profesional
 ## Testing
 - iteration_1: 24/24 backend, todos los flujos frontend PASS. iteration_2: sanity post-restart PASS.
 - iteration_3: 36/36 backend, Google Auth (redirect + endpoint), fotos (upload/display/ownership), chat bidireccional E2E, banner $3.000, regresión completa — PASS. Login Google real requiere cuenta Google (no automatizable).
+- iteration_4: 46/46 backend, banner rediseñado verificado visualmente, JWT forjado con secreto antiguo → 401, dedupe/auto-reseña bloqueadas, ReDoS mitigado — PASS.
