@@ -1,0 +1,40 @@
+{
+  "summary": "Iteración 3 - las 4 funciones nuevas verificadas E2E. Backend: 36/36 pytest (12 nuevos + 24 regresión) contra la URL pública. Nuevos: POST /api/auth/session rechaza session_id falso con 401 (no 500); upload real a Object Storage + GET /api/files con Bearer y con ?token= (200) y 401 sin auth; PUT /users/me/photo persiste y propaga photo_path a los providers del usuario; ownership enforcement (foto ajena -> 404/400); chat bidireccional API OK (dueña ve role=professional, display_name='Visitante Uno', responde; un tercer usuario recibe 404). Frontend (390x844): botón 'Continuar con Google' (testID google-signin-button) redirige en web a https://auth.emergentagent.com/?redirect=<origin>/ con el param correcto (login Google real NO completado - requiere cuenta real, validado solo el redirect y el endpoint); login email/password OK y /api/auth/me acepta JWT; PhotoPicker del header (user-photo-picker) abre file chooser web, sube y el avatar circular muestra la foto (/api/files?token=, imagen carga naturalWidth>0) con notice 'Tu foto de perfil fue actualizada'; register-photo-picker adjunta foto, publicar perfil con photo_path OK y 'Ver mi perfil' muestra el avatar grande con la foto; chat bidireccional E2E UI completo (visitante envía -> clienta ve badge CLIENTA + nombre 'Visitante Uno' en tab Chats, abre y responde -> visitante lee la respuesta); banner free muestra 'Premium por $3.000/mes'; regresión OK: login, home, chips de búsqueda (categoría + rating), reseñas (publicar y persistir), botón WhatsApp (abre api.whatsapp.com con +56987654321 y mensaje prellenado), logout.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/conversations/{provider_id}", "issue": "Idempotent path (conversation already exists) returns the raw Mongo doc WITHOUT role/display_name/display_initials, inconsistent with the first-call response which adds them (server.py:404-406 vs 424-426). Frontend unaffected (only consumes conv.id) but the API contract is inconsistent."},
+      {"endpoint": "GET /api/providers/{id}", "issue": "Carry-over: seed ratings/reviews_count are fabricated (no matching review docs); the first real review recomputes from actual docs (Ana Morales 4.9/42 -> 5.0/1 after one TEST review). Seed matching review docs or tolerate."},
+      {"endpoint": "POST /api/providers", "issue": "Carry-over: returns 200 instead of 201; no dedupe (clienta now owns duplicate 'TEST Paula Test' profiles from repeated runs)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Deep link directo a /provider/[id] sin sesión", "issue": "La pantalla de perfil no tiene guard de auth: se puede ver el perfil completo sin login (el endpoint es público) y solo al interactuar (reseña) aparece el notice 401 'Inicia sesión para continuar' en vez de redirigir a /login. Posiblemente intencional, pero la UX debería redirigir al login si la app es auth-gated.", "affected_testIDs": ["provider-name", "review-submit-button"]}
+    ],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iteration3.py", "/app/backend/tests/test_maestrasred.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Unificar respuesta de POST /api/conversations/{provider_id}: agregar role/display_name/display_initials también en el camino idempotente (server.py:404-406)",
+    "Decidir si /provider/[id] debe ser auth-gated en el router (redirect a /login sin sesión) o si el perfil público es intencional",
+    "Carry-over: sembrar reseñas coherentes con rating/reviews_count seed; 201 en POST /api/providers; JWT_SECRET en backend/.env; dedupe de reseñas por usuaria",
+    "Falta /app/memory/test_credentials.md y /app/auth_testing.md (no existen) - crear para próximos agentes"
+  ],
+  "critical_code_review_comments": [
+    "server.py (459 líneas) limpio: _id excluido en todos los endpoints, validación Pydantic, upload valida content-type image/* + 5MB + ownership en files, manejo 402/502 del Object Storage, session_tokens con TTL index de Mongo (expires_at) - bien hecho",
+    "find_user_by_token acepta JWT propio y session_token Emergent con chequeo de expiración - correcto",
+    "PhotoPicker con contrato de permisos completo (check->request->Abrir configuración) y fallback web a file input nativo",
+    "Sin paquetes deprecados (expo-image, expo-image-picker ~57, expo-web-browser 57); sin SafeAreaView de RN; todos los elementos interactivos tienen testID",
+    "Nota de testing (no es bug de app): expo-router web mantiene pantallas montadas ocultas, por lo que selectores por texto/testID pueden resolver copias ocultas de cards/mensajes - usar :visible o .last en Playwright"
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration3.py"],
+  "success_rate": {"backend": "100% (36/36)", "frontend": "100% (todas las funciones de la iteración + regresión verificadas; 0 console errors críticos)"},
+  "seed_data_creation": "TEST data creada: 1 review real en p-ana (Visitante Uno, 5 estrellas - recomputó rating a 5.0/1), provider 'TEST Jardinera UI' (visitante, con foto), mensajes TEST UI en la conversación visitante<->TEST Paula Test, fotos de perfil subidas para visitante y clienta.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Playwright en expo-router web: las pantallas de tabs quedan montadas pero ocultas -> get_by_text/locators pueden matchear nodos ocultos (usar .last o ':visible'); la tab bar no existe en pantallas pusheadas (chat/provider) - volver con chat-back-button/back-button antes de cambiar de tab; el click en provider-card funciona cuando se clickea la copia visible. expo-image-picker en web dispara filechooser nativo: usar page.expect_file_chooser + set_files. El banner de WhatsApp redirige wa.me -> api.whatsapp.com (validar phone en la URL final). Upgrade Premium es MOCK (sin pago real). Login Google real no automatizable - solo verificar redirect.",
+  "rca_of_issue": "Sin bugs funcionales nuevos. Hallazgo menor: el deep link /provider/[id] sin sesión muestra el perfil (endpoint público by design) y falla con 401 solo al publicar reseña - RCA: la pantalla no consulta sesión antes de renderizar y app/index.tsx (que sí valida sesión) no está en el camino de deep links directos. Mitigación sugerida: guard de auth en _layout o redirect a /login cuando loadUser() es null."
+}

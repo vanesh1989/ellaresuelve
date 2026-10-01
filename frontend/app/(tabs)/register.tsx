@@ -1,4 +1,5 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
@@ -6,6 +7,7 @@ import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboa
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, Provider } from "@/src/api";
+import { PhotoPicker } from "@/src/components/photo-picker";
 import { CATEGORIES, Chip, ChipRow, Field, PrimaryButton } from "@/src/components/ui";
 import { usesNativeTabs } from "@/src/navigation";
 import { makeStyles, useTheme } from "@/src/theme";
@@ -28,6 +30,24 @@ export default function RegisterScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState<Provider | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  async function onPhoto(asset: ImagePicker.ImagePickerAsset) {
+    setPhotoUri(asset.uri);
+    setPhotoBusy(true);
+    setError("");
+    try {
+      const uploaded = await api.uploadPhoto(asset);
+      setPhotoPath(uploaded.path);
+    } catch (err) {
+      setPhotoUri(null);
+      setError(err instanceof Error ? err.message : "No pudimos subir la foto");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   async function submit() {
     const rateValue = Number(rate.replace(/[^\d]/g, ""));
@@ -47,6 +67,7 @@ export default function RegisterScreen() {
         city: city.trim() || "Santiago",
         commune: commune.trim(),
         whatsapp: whatsapp.trim(),
+        ...(photoPath ? { photo_path: photoPath } : {}),
       });
       setDone(created);
     } catch (err) {
@@ -82,6 +103,9 @@ export default function RegisterScreen() {
         <Text style={styles.eyebrow}>PUBLICA</Text>
         <Text style={styles.title}>Ofrece tus servicios</Text>
         <Text style={styles.subtitle}>Crea tu perfil profesional y empieza a recibir contactos por WhatsApp.</Text>
+
+        <PhotoPicker testID="register-photo-picker" localUri={photoUri} uploading={photoBusy} onPick={onPhoto} />
+        <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center" }}>Una foto real genera más confianza y contactos.</Text>
 
         <Text style={styles.label}>Tu nombre</Text>
         <Field testID="register-name-input" icon="person-outline" placeholder="Ej. María González" value={name} onChangeText={setName} autoCapitalize="words" />

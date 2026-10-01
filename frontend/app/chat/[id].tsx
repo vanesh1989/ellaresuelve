@@ -15,7 +15,7 @@ export default function ChatScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { id, name, initials } = useLocalSearchParams<{ id: string; name?: string; initials?: string }>();
+  const { id, name, initials, photo } = useLocalSearchParams<{ id: string; name?: string; initials?: string; photo?: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [userId, setUserId] = useState("");
   const [text, setText] = useState("");
@@ -63,7 +63,7 @@ export default function ChatScreen() {
         <Pressable testID="chat-back-button" onPress={() => router.back()} style={styles.backButton} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </Pressable>
-        <Avatar initials={initials ?? "??"} size={38} />
+        <Avatar initials={initials ?? "??"} size={38} photoPath={photo || null} />
         <Text testID="chat-header-name" style={styles.headerName} numberOfLines={1}>{name ?? "Conversación"}</Text>
       </View>
       {notice ? <Notice text={notice} onClose={() => setNotice("")} /> : null}

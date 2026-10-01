@@ -58,12 +58,17 @@ export default function MessagesScreen() {
             <Pressable
               testID={`conversation-${item.id}`}
               style={styles.row}
-              onPress={() => router.push({ pathname: "/chat/[id]", params: { id: item.id, name: item.provider_name, initials: item.provider_initials } })}
+              onPress={() => router.push({ pathname: "/chat/[id]", params: { id: item.id, name: item.display_name, initials: item.display_initials, photo: item.role === "client" ? item.provider_photo ?? "" : "" } })}
             >
-              <Avatar initials={item.provider_initials} size={50} />
+              <Avatar initials={item.display_initials} size={50} photoPath={item.role === "client" ? item.provider_photo : null} />
               <View style={styles.copy}>
                 <View style={styles.topLine}>
-                  <Text style={styles.name} numberOfLines={1}>{item.provider_name}</Text>
+                  <Text style={styles.name} numberOfLines={1}>{item.display_name}</Text>
+                  {item.role === "professional" ? (
+                    <View style={{ backgroundColor: colors.brandTertiary, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ color: colors.onBrandTertiary, fontSize: 10, fontWeight: "800" }}>CLIENTA</Text>
+                    </View>
+                  ) : null}
                   <Text style={styles.time}>{formatDistanceToNow(new Date(item.updated_at), { addSuffix: true, locale: es })}</Text>
                 </View>
                 <Text style={styles.last} numberOfLines={1}>{item.last_message}</Text>

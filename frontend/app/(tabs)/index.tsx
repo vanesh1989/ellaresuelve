@@ -1,4 +1,5 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
+import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -7,6 +8,7 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, ProvidersResult, User } from "@/src/api";
+import { PhotoPicker } from "@/src/components/photo-picker";
 import { CATEGORIES, CategoryCard, Chip, ChipRow, EmptyState, FreeBanner, Loader, Notice, ProviderCard, SectionHeader } from "@/src/components/ui";
 import { usesNativeTabs } from "@/src/navigation";
 import { clearSession, loadUser, saveUser } from "@/src/session";
@@ -28,6 +30,22 @@ export default function HomeScreen() {
   const [locationModal, setLocationModal] = useState(false);
   const [notice, setNotice] = useState("");
   const [upgrading, setUpgrading] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+
+  async function onUserPhoto(asset: ImagePicker.ImagePickerAsset) {
+    setPhotoBusy(true);
+    try {
+      const uploaded = await api.uploadPhoto(asset);
+      const updated = await api.setMyPhoto(uploaded.path);
+      await saveUser(updated);
+      setUser(updated);
+      setNotice("Tu foto de perfil fue actualizada.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No pudimos actualizar tu foto");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   const commune = location.split(",")[0].trim();
 
@@ -71,6 +89,7 @@ export default function HomeScreen() {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
+        <PhotoPicker testID="user-photo-picker" size={46} uploading={photoBusy} onPick={onUserPhoto} photoPath={user?.photo_path} photoUrl={user?.photo_url} />
         <View style={styles.headerText}>
           <Text style={styles.eyebrow}>MAESTRAS RED</Text>
           <Text style={styles.greeting}>Hola{user ? `, ${user.name.split(" ")[0]}` : ""}</Text>

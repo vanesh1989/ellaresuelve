@@ -10,7 +10,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Encuentra profesionales cerca de ti"
+        "NSLocationWhenInUseUsageDescription": "Encuentra profesionales cerca de ti",
+        "NSPhotoLibraryUsageDescription": "Comparte una foto para tu perfil"
       },
       "bundleIdentifier": "com.emergent.proserviceshub.i6s2pc"
     },
@@ -47,7 +48,8 @@
       "expo-web-browser",
       "expo-status-bar",
       "expo-location",
-      "@react-native-vector-icons/ionicons"
+      "@react-native-vector-icons/ionicons",
+      "expo-image-picker"
     ],
     "experiments": {
       "typedRoutes": true

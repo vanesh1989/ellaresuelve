@@ -4,6 +4,7 @@ import { ComponentProps } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, TextInputProps, View } from "react-native";
 
 import { Provider } from "@/src/api";
+import { useAuthedImageSource } from "@/src/images";
 import { makeStyles, useTheme } from "@/src/theme";
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
@@ -74,11 +75,16 @@ export function Loader() {
   return <View style={styles.loaderWrap}><ActivityIndicator color={colors.brandPrimary} /></View>;
 }
 
-export function Avatar({ initials, size = 58, testID }: { initials: string; size?: number; testID?: string }) {
+export function Avatar({ initials, size = 58, testID, photoPath, photoUrl }: { initials: string; size?: number; testID?: string; photoPath?: string | null; photoUrl?: string | null }) {
   const styles = useStyles();
+  const source = useAuthedImageSource(photoPath, photoUrl);
   return (
-    <View testID={testID} style={[styles.avatar, { width: size, height: size, borderRadius: size * 0.3 }]}>
-      <Text style={[styles.avatarText, { fontSize: Math.max(12, size * 0.32) }]}>{initials}</Text>
+    <View testID={testID} style={[styles.avatar, { width: size, height: size, borderRadius: size * 0.3, overflow: "hidden" }]}>
+      {source ? (
+        <Image source={source} style={StyleSheet.absoluteFill} contentFit="cover" />
+      ) : (
+        <Text style={[styles.avatarText, { fontSize: Math.max(12, size * 0.32) }]}>{initials}</Text>
+      )}
     </View>
   );
 }
@@ -231,7 +237,7 @@ export function FreeBanner({ onUpgrade, busy }: { onUpgrade: () => void; busy?: 
       <View style={styles.bannerIcon}><Ionicons name="ribbon-outline" size={20} color={colors.onBrandPrimary} /></View>
       <View style={styles.bannerCopy}>
         <Text style={styles.bannerTitle}>Plan gratuito</Text>
-        <Text style={styles.bannerText}>Estás viendo solo las profesionales mejor evaluadas (4,5★ o más).</Text>
+        <Text style={styles.bannerText}>Ves solo las mejor evaluadas (4,5★+). Premium por $3.000/mes.</Text>
       </View>
       <Pressable testID="upgrade-button" onPress={onUpgrade} disabled={busy} style={styles.bannerButton}>
         {busy ? <ActivityIndicator size="small" color={colors.onBrandSecondary} /> : <Text style={styles.bannerButtonText}>Hazte Premium</Text>}

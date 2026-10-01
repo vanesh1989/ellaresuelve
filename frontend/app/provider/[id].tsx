@@ -97,7 +97,7 @@ export default function ProviderDetailScreen() {
         <>
           <KeyboardAwareScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: 132 + insets.bottom }]}>
             <View style={styles.hero}>
-              <Avatar testID="provider-avatar" initials={provider.initials} size={82} />
+              <Avatar testID="provider-avatar" initials={provider.initials} size={82} photoPath={provider.photo_path} />
               <View style={styles.heroCopy}>
                 <View style={styles.nameLine}>
                   <Text testID="provider-name" style={styles.name}>{provider.name}</Text>
