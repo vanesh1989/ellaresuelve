@@ -1,0 +1,41 @@
+{
+  "summary": "E2E testing of MaestrasRed (Expo web preview + FastAPI). Backend: 24/24 pytest passed (auth register/login/me, free plan limited=true rating>=4.5, premium sees all, upgrade flips limited=false, category filter x4, search filter, provider detail+reviews, create provider persistence, review average/count recompute (5+4 -> 4.5, count=2), conversation create/idempotency, message send/list, 401/404/422 error handling). Frontend: all requested flows verified at 390x844 - login redirects to tabs, home greeting/location pill/hero/4 category cards/Mejor evaluadas, premium hides free banner, location modal with GPS button + commune chips + save updates list, GPS permission denial handled gracefully (denied box with 'Abrir configuración'), search input + category/rating chips filter correctly, card tap opens correct provider, review with stars+comment publishes and updates average, WhatsApp button builds correct wa.me URL, chat interno creates conversation and opens /chat/[id], message bubbles render, Chats tab lists conversations with last message, Publicar form publishes and shows success screen with 'Ver mi perfil', free user sees 'Plan gratuito' banner + Hazte Premium CTA, upgrade hides banner and expands list (2->4 in Providencia), logout returns to /login. No deprecated Expo packages (expo-av/barcode-scanner/background-fetch absent; expo-location current). Google Auth intentionally out of scope. Upgrade to Premium is MOCKED (no real payment), as declared.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/providers/{id}/reviews", "issue": "Seed data integrity: seeded providers claim rating/reviews_count (e.g. p-valentina 4.8/31) but no review documents exist in DB. First real review recomputes count from actual docs, so Valentina dropped from '4.8 - 31 resenas' to '5.0 - 1 resenas' after one review. Either seed matching review docs or accept the recompute jump."},
+      {"endpoint": "POST /api/providers", "issue": "Returns 200 instead of 201 Created (minor REST convention)"},
+      {"endpoint": "POST /api/providers/{id}/reviews", "issue": "No dedupe: same user can post unlimited reviews to the same provider, skewing the average"},
+      {"endpoint": "server.py:21", "issue": "JWT_SECRET falls back to hardcoded 'maestrasred-local-secret' if env missing - should fail fast per env-var rules"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "FlatList (search.tsx)", "issue": "Stale duplicate cell DOM nodes persist after the debounced double-fetch on mount (e.g. two data-testid='provider-card-p-ana' nodes; the stale one at y=597 sits UNDER the painted Marcela card). Real users tapping visible cards navigate correctly (verified via elementFromPoint + painted-card click), but the orphan nodes break testID-based automation (first selector match hits a covered node) and may confuse screen readers.", "testID": "provider-card-*", "priority": "MINOR"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_maestrasred.py", "/app/backend/tests/conftest.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix seed data integrity: create matching review documents for seeded providers OR stop fabricating reviews_count/rating so first real review doesn't reset '31 resenas' to '1 resena'",
+    "Investigate FlatList stale cell cleanup on web in search.tsx (avoid double fetch on mount or add key/extraData to force clean re-render)",
+    "Set JWT_SECRET in backend/.env and remove the hardcoded fallback in server.py",
+    "Optional: return 201 on POST /api/providers; dedupe reviews per user per provider",
+    "Populate /app/memory/test_credentials.md with cliente@maestrasred.cl / prueba123 (premium) - file was empty",
+    "Future phase: Google Auth (intentionally not implemented); Premium upgrade is currently a MOCK with no payment"
+  ],
+  "critical_code_review_comments": [
+    "Chat is one-directional: conversation participants are [user_id, provider_id], but provider_id is not a user account, so professionals can never log in and reply. Acceptable for MVP but the 'chat interno' is effectively a one-way inbox.",
+    "api.ts reads baseUrl from Constants.expoConfig.extra.backendUrl ?? process.env.EXPO_PUBLIC_BACKEND_URL - works, but note frontend/.env defines EXPO_PUBLIC_BACKEND_URL (not EXPO_BACKEND_URL)",
+    "Good: all interactive elements have testID; styles via StyleSheet/makeStyles; no HTML elements; MongoDB _id properly excluded; Pydantic validation on all inputs; proper 401/404/409/422 codes"
+  ],
+  "updated_files": ["/app/backend/tests/conftest.py", "/app/backend/tests/test_maestrasred.py"],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% functional (all requested flows pass; 1 minor FlatList stale-DOM-node quirk that only affects testID automation, not users)"},
+  "seed_data_creation": "Created during testing: users TEST_free_*@maestrasred.cl / TEST_ui_*@maestrasred.cl (prueba123), providers prefixed 'TEST ' (TEST Paula Test x2, TEST Maria Playwright), reviews/messages prefixed 'TEST'. cliente@maestrasred.cl (premium) reviewed p-valentina (now shows 5.0 - 1 resena) and has conversations with p-ana and p-marcela.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend suite at /app/backend/tests/test_maestrasred.py is reusable (session-scoped token fixtures, xdist-safe). Playwright caveat: on search/home lists, [data-testid^='provider-card-'] may match stale covered FlatList cells - resolve the painted node via document.elementFromPoint before clicking, or filter duplicates by hit-test. Commune chips inside the location modal need ~1s settle after opening before clicking. Tab bar is not visible on stack screens (/provider, /chat) - navigate back first. /app/memory/test_credentials.md is empty; credentials come from the review request (cliente@maestrasred.cl / prueba123).",
+  "rca_of_issue": "Reported card-tap mismatch RCA: NOT an app bug. FlatList on web leaves orphan cell nodes after the mount-time double fetch (250ms debounce). The stale node shares the same testID and its bounding-box center overlaps a different painted card, so coordinate-based clicks open the 'wrong' provider. Verified via elementFromPoint: painted cards all hit-test to themselves and tapping them navigates to the correct /provider/[id]. Real-user impact: none observed; automation impact: use painted-node resolution."
+}

@@ -1,0 +1,173 @@
+{
+  "app_name": "MaestrasRed",
+  "personality": "1 iOS-Native Clean",
+  "personality_one_liner": "Un mercado confiable y elegante diseñado para conectar clientes con maestras, profesoras, gasfiteras y jardineras expertas.",
+  "color": {
+    "surface": "#F9F8F6",
+    "onSurface": "#1A1918",
+    "surfaceSecondary": "#FFFFFF",
+    "onSurfaceSecondary": "#1A1918",
+    "surfaceTertiary": "#EFECE6",
+    "onSurfaceTertiary": "#4A4745",
+    "surfaceInverse": "#1A1918",
+    "onSurfaceInverse": "#FFFFFF",
+    "brand": "#3B5249",
+    "brandPrimary": "#3B5249",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#C86D51",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#E5ECE9",
+    "onBrandTertiary": "#23332C",
+    "success": "#3B6E59",
+    "onSuccess": "#FFFFFF",
+    "warning": "#C48A27",
+    "onWarning": "#FFFFFF",
+    "error": "#B84A39",
+    "onError": "#FFFFFF",
+    "info": "#4A6FA5",
+    "onInfo": "#FFFFFF",
+    "border": "#E2DFD8",
+    "borderStrong": "#3B5249",
+    "divider": "#EFECE6",
+    "muted": "#7A7672",
+    "onBrand": "#FFFFFF"
+  },
+  "typography": {
+    "displayFontFamily": "PlusJakartaSans-Medium",
+    "textFontFamily": "PlusJakartaSans-Regular",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous iOS padding and comfortable vertical rhythm with safe area respect",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Ionicons",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use frosted glass on sticky search headers and bottom navigation tab bars",
+      "Apply translucent tinted glass on hero cards over imagery"
+    ],
+    "dont's": [
+      "Never apply blur to form inputs or list items",
+      "Do not stack more than two blur surfaces per screen"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Auth",
+      "purpose": "Permite iniciar sesión o registrarse con correo, contraseña o Google con total seguridad y confianza.",
+      "states": {
+        "loading": "Indicador circular centrado con el color primario de la marca",
+        "empty": "N/A - Formulario activo de autenticación",
+        "error": "Mensaje de alerta legible con botón de reintento"
+      },
+      "layout": "Pantalla limpia con logotipo central, campos estructurados de correo y contraseña, botón principal sticky y acceso rápido a Google."
+    },
+    {
+      "name": "Home",
+      "purpose": "Muestra la ubicación actual, categorías clave de profesionales (profesoras, niñeras, gasfiteras, jardineras) y las mejores evaluadas.",
+      "states": {
+        "loading": "Esqueletos de tarjetas con animación de fundido",
+        "empty": "Ilustración limpia + 'No hay maestras disponibles en tu zona' + Botón para ampliar radio de búsqueda",
+        "error": "Banner de error de conexión con botón Reintentar"
+      },
+      "layout": "Cabecera con selector de ubicación geográfica, carrusel de categorías en píldoras, sección destacada 'Mejor Evaluadas' en formato de tarjeta vertical con scrim y calificaciones verificadas."
+    },
+    {
+      "name": "Search & Filters",
+      "purpose": "Búsqueda avanzada por comuna/ciudad, especialidad, rango de calificación y tarifas.",
+      "states": {
+        "loading": "Spinner centrado en la lista de resultados",
+        "empty": "Ilustración de lupa + 'No se encontraron resultados para tu búsqueda' + Botón de restablecer filtros",
+        "error": "Mensaje de error con opción de recargar búsqueda"
+      },
+      "layout": "Barra de búsqueda superior con icono, filtros rápidos en chips horizontales y lista vertical de profesionales con avatar real, insignia de confianza, tarifas por hora y distancia en km."
+    },
+    {
+      "name": "Provider Profile",
+      "purpose": "Detalle completo de la profesional con descripción, tarifas, galería de trabajos, reseñas verificadas y botones de contacto (Chat y WhatsApp).",
+      "states": {
+        "loading": "Esqueleto de cabecera y pestañas de contenido",
+        "empty": "Mensaje 'Aún no hay reseñas registradas para esta profesional'",
+        "error": "Pantalla de error con opción de reintentar la carga del perfil"
+      },
+      "layout": "Cabecera con foto de perfil en alta resolución, insignia verificada, estrellas de valoración, desglose de tarifas, sección de opiniones y barra inferior fija con dos CTAs ('Chat Interno' y 'WhatsApp directo')."
+    },
+    {
+      "name": "Register Provider",
+      "purpose": "Formulario para que maestras, profesoras, gasfiteras y jardineras se inscriban ofreciendo sus servicios.",
+      "states": {
+        "loading": "Indicador de carga al guardar el perfil profesional",
+        "empty": "N/A",
+        "error": "Alerta de validación de campos obligatorios"
+      },
+      "layout": "Formulario por pasos con selector de categoría, descripción profesional, tarifa por hora, comuna y enlace de WhatsApp."
+    },
+    {
+      "name": "Chat",
+      "purpose": "Mensajería interna en tiempo real entre cliente y profesional con acceso rápido a coordinar servicios.",
+      "states": {
+        "loading": "Burbujas de carga esqueléticas",
+        "empty": "Ilustración de chat + 'Inicia una conversación con la profesional' + CTA 'Enviar mensaje'",
+        "error": "Mensaje de error de sincronización"
+      },
+      "layout": "Lista de conversaciones recientes con indicador de estado, o vista de chat individual con burbujas diferenciadas y barra inferior de entrada de texto."
+    }
+  ],
+  "images": {
+    "teacher_hero": {
+      "url": "https://images.unsplash.com/photo-1590650213165-c1fef80648c4?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "dark": "https://images.unsplash.com/photo-1590650213165-c1fef80648c4?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Profesora en entorno educativo"
+    },
+    "babysitter_hero": {
+      "url": "https://images.unsplash.com/photo-1715433492205-9256ae412a8d?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "dark": "https://images.unsplash.com/photo-1715433492205-9256ae412a8d?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Niñera profesional con niño"
+    },
+    "gardener_hero": {
+      "url": "https://images.unsplash.com/photo-1728881652468-d445a6c23333?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "dark": "https://images.unsplash.com/photo-1728881652468-d445a6c23333?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Jardinera experta cuidando plantas"
+    },
+    "gasfiter_hero": {
+      "url": "https://images.unsplash.com/photo-1635874554973-aa7e8b59ef14?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "dark": "https://images.unsplash.com/photo-1635874554973-aa7e8b59ef14?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Gasfitera de construcción especializada"
+    }
+  },
+  "instructions_to_main_agent": "Implement a fully functional Expo React Native mobile app named MaestrasRed following iOS-Native Clean guidelines. Ensure all 6 screens (Auth, Home, Search, Provider Profile, Register Provider, Chat) are fully implemented with loading, empty, and error states. Use real image URLs fetched for professional categories (teachers, babysitters, gardeners, gasfitters), enforce the sticky bottom CTA pattern on action screens, implement location detection and manual commune selection, support internal chat and direct WhatsApp integration, and maintain WCAG contrast across all botanical and ceramic theme tokens without using any forbidden purple/blue/indigo hues."
+}
