@@ -86,6 +86,7 @@ class ProviderCreate(BaseModel):
     commune: str = Field(min_length=2)
     whatsapp: str = Field(min_length=7)
     photo_path: Optional[str] = None
+    gallery: list[str] = Field(default_factory=list)
 
 
 class ReviewCreate(BaseModel):
@@ -97,6 +98,9 @@ class MessageCreate(BaseModel):
     text: str = Field(min_length=1, max_length=500)
 
 
+ADMIN_EMAILS = {entry.strip().lower() for entry in os.environ.get("ADMIN_EMAILS", "").split(",") if entry.strip()}
+
+
 def public_user(user: dict) -> dict:
     return {
         "id": user["id"],
@@ -105,6 +109,7 @@ def public_user(user: dict) -> dict:
         "plan": user.get("plan", "free"),
         "photo_url": user.get("photo_url"),
         "photo_path": user.get("photo_path"),
+        "is_admin": user["email"].lower() in ADMIN_EMAILS,
     }
 
 
@@ -379,6 +384,10 @@ async def review(provider_id: str, data: ReviewCreate, user: dict = Depends(curr
 async def create_provider(data: ProviderCreate, user: dict = Depends(current_user)):
     if data.photo_path and not await db.files.find_one({"path": data.photo_path, "owner_id": user["id"]}, {"_id": 0}):
         raise HTTPException(status_code=400, detail="La foto no pertenece a tu cuenta")
+    data.gallery = data.gallery[:6]
+    for path in data.gallery:
+        if not await db.files.find_one({"path": path, "owner_id": user["id"]}, {"_id": 0}):
+            raise HTTPException(status_code=400, detail="Las fotos de la galería deben ser tuyas")
     item = data.model_dump() | {
         "id": str(uuid.uuid4()),
         "owner_id": user["id"],
@@ -461,7 +470,166 @@ async def send_message(conversation_id: str, data: MessageCreate, user: dict = D
     await db.messages.insert_one(message)
     message.pop("_id", None)
     await db.conversations.update_one({"id": conversation_id}, {"$set": {"last_message": data.text, "updated_at": message["created_at"]}})
+    recipient = None
+    if conversation.get("owner_id"):
+        recipient = conversation["owner_id"] if user["id"] == conversation["user_id"] else conversation["user_id"]
+    if recipient:
+        try:
+            await send_push(
+                recipients=[recipient],
+                data={"title": user["name"], "message": data.text, "action_url": f"/chat/{conversation_id}"},
+                idempotency_key=message["id"],
+            )
+        except Exception as exc:
+            logging.warning("Push failed (non-blocking): %s", exc)
     return message
+
+
+# ---------------------------------------------------------------------------
+# Push notifications (Emergent managed relay)
+# ---------------------------------------------------------------------------
+PUSH_BASE_URL = "https://integrations.emergentagent.com"
+PUSH_KEY = os.environ.get("EMERGENT_PUSH_KEY", "placeholder")
+push_client = httpx.AsyncClient(base_url=PUSH_BASE_URL, headers={"X-Push-Key": PUSH_KEY}, timeout=10.0)
+
+
+class RegisterPushBody(BaseModel):
+    user_id: str
+    platform: str  # "android" | "ios"
+    device_token: str
+
+
+@api_router.post("/register-push", status_code=201)
+async def register_push(body: RegisterPushBody):
+    resp = await push_client.post("/api/v1/push/users/register", json=body.model_dump())
+    if resp.status_code == 401:
+        raise HTTPException(500, "EMERGENT_PUSH_KEY missing or invalid")
+    if resp.status_code >= 500:
+        raise HTTPException(502, "Push provider unavailable")
+    resp.raise_for_status()
+    return {"status": "registered"}
+
+
+async def send_push(recipients: list, data: dict, idempotency_key: Optional[str] = None) -> None:
+    if not recipients:
+        return
+    if "title" not in data or "message" not in data:
+        raise ValueError("data must include title and message")
+    payload: dict = {"recipients": recipients, "data": data}
+    if idempotency_key:
+        payload["$idempotency_key"] = idempotency_key
+    resp = await push_client.post("/api/v1/push/trigger", json=payload)
+    if resp.status_code == 401:
+        raise HTTPException(500, "EMERGENT_PUSH_KEY missing or invalid")
+    if resp.status_code >= 500:
+        raise HTTPException(502, "Push provider unavailable")
+    resp.raise_for_status()
+
+
+# ---------------------------------------------------------------------------
+# Identity verification + admin review
+# ---------------------------------------------------------------------------
+class VerificationSubmit(BaseModel):
+    provider_id: str
+    id_path: str
+    selfie_path: str
+
+
+class VerificationDecision(BaseModel):
+    approve: bool
+
+
+def require_admin(user: dict) -> None:
+    if user["email"].lower() not in ADMIN_EMAILS:
+        raise HTTPException(status_code=403, detail="Solo la administración puede hacer esto")
+
+
+@api_router.post("/verification/submit", status_code=201)
+async def verification_submit(data: VerificationSubmit, user: dict = Depends(current_user)):
+    provider = await db.providers.find_one({"id": data.provider_id, "owner_id": user["id"]}, {"_id": 0})
+    if not provider:
+        raise HTTPException(status_code=404, detail="Solo puedes verificar tu propio perfil")
+    if provider.get("verified"):
+        raise HTTPException(status_code=409, detail="Tu perfil ya está verificado")
+    for path in (data.id_path, data.selfie_path):
+        if not await db.files.find_one({"path": path, "owner_id": user["id"]}, {"_id": 0}):
+            raise HTTPException(status_code=400, detail="Las fotos deben subirse desde tu cuenta")
+    if await db.verifications.find_one({"provider_id": data.provider_id, "status": "pending"}, {"_id": 0}):
+        raise HTTPException(status_code=409, detail="Ya tienes una verificación en revisión")
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "user_name": user["name"],
+        "provider_id": data.provider_id,
+        "provider_name": provider["name"],
+        "category": provider["category"],
+        "commune": provider["commune"],
+        "id_path": data.id_path,
+        "selfie_path": data.selfie_path,
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.verifications.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api_router.get("/verification/mine")
+async def verification_mine(user: dict = Depends(current_user)):
+    return await db.verifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(10)
+
+
+@api_router.get("/admin/verifications")
+async def admin_verifications(status: str = "pending", user: dict = Depends(current_user)):
+    require_admin(user)
+    return await db.verifications.find({"status": status}, {"_id": 0}).sort("created_at", 1).to_list(50)
+
+
+@api_router.post("/admin/verifications/{verification_id}/decision")
+async def admin_decision(verification_id: str, data: VerificationDecision, user: dict = Depends(current_user)):
+    require_admin(user)
+    verification = await db.verifications.find_one({"id": verification_id, "status": "pending"}, {"_id": 0})
+    if not verification:
+        raise HTTPException(status_code=404, detail="Verificación no encontrada o ya resuelta")
+    new_status = "approved" if data.approve else "rejected"
+    await db.verifications.update_one(
+        {"id": verification_id},
+        {"$set": {"status": new_status, "reviewed_at": datetime.now(timezone.utc).isoformat(), "reviewed_by": user["email"]}},
+    )
+    await db.providers.update_one({"id": verification["provider_id"]}, {"$set": {"verified": data.approve}})
+    return {"status": new_status}
+
+
+# ---------------------------------------------------------------------------
+# Provider work gallery (max 6 photos)
+# ---------------------------------------------------------------------------
+class GalleryUpdate(BaseModel):
+    path: str
+
+
+@api_router.post("/providers/{provider_id}/gallery")
+async def gallery_add(provider_id: str, data: GalleryUpdate, user: dict = Depends(current_user)):
+    provider = await db.providers.find_one({"id": provider_id, "owner_id": user["id"]}, {"_id": 0})
+    if not provider:
+        raise HTTPException(status_code=404, detail="Solo la dueña del perfil puede editar su galería")
+    if not await db.files.find_one({"path": data.path, "owner_id": user["id"]}, {"_id": 0}):
+        raise HTTPException(status_code=400, detail="La foto debe subirse desde tu cuenta")
+    gallery = provider.get("gallery", [])
+    if data.path in gallery:
+        raise HTTPException(status_code=409, detail="Esa foto ya está en la galería")
+    if len(gallery) >= 6:
+        raise HTTPException(status_code=400, detail="Máximo 6 fotos en la galería")
+    await db.providers.update_one({"id": provider_id}, {"$push": {"gallery": data.path}})
+    return {"gallery": gallery + [data.path]}
+
+
+@api_router.delete("/providers/{provider_id}/gallery")
+async def gallery_remove(provider_id: str, data: GalleryUpdate, user: dict = Depends(current_user)):
+    provider = await db.providers.find_one({"id": provider_id, "owner_id": user["id"]}, {"_id": 0})
+    if not provider:
+        raise HTTPException(status_code=404, detail="Solo la dueña del perfil puede editar su galería")
+    await db.providers.update_one({"id": provider_id}, {"$pull": {"gallery": data.path}})
+    return {"gallery": [path for path in provider.get("gallery", []) if path != data.path]}
 
 
 app.include_router(api_router)

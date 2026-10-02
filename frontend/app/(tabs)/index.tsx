@@ -11,6 +11,7 @@ import { api, ProvidersResult, User } from "@/src/api";
 import { PhotoPicker } from "@/src/components/photo-picker";
 import { CATEGORIES, CategoryCard, Chip, ChipRow, EmptyState, FreeBanner, Loader, Notice, ProviderCard, SectionHeader } from "@/src/components/ui";
 import { usesNativeTabs } from "@/src/navigation";
+import { unbindRevenueCatIdentity } from "@/src/revenuecat";
 import { clearSession, loadUser, saveUser } from "@/src/session";
 import { makeStyles, useTheme } from "@/src/theme";
 
@@ -29,7 +30,7 @@ export default function HomeScreen() {
   const [location, setLocation] = useState("Providencia, Santiago");
   const [locationModal, setLocationModal] = useState(false);
   const [notice, setNotice] = useState("");
-  const [upgrading, setUpgrading] = useState(false);
+  const [upgrading] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
 
   async function onUserPhoto(asset: ImagePicker.ImagePickerAsset) {
@@ -66,22 +67,16 @@ export default function HomeScreen() {
     load();
   }, [load]));
 
-  async function upgrade() {
-    setUpgrading(true);
-    try {
-      const updated = await api.upgrade();
-      await saveUser(updated);
-      setUser(updated);
-      await load(true);
-      setNotice("¡Ahora eres Premium! Ves a todas las profesionales.");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "No pudimos actualizar tu plan");
-    } finally {
-      setUpgrading(false);
-    }
+  function upgrade() {
+    router.push("/paywall");
   }
 
   async function logout() {
+    try {
+      await unbindRevenueCatIdentity();
+    } catch {
+      // RevenueCat no disponible en este entorno
+    }
     await clearSession();
     router.replace("/login");
   }
@@ -94,9 +89,16 @@ export default function HomeScreen() {
           <Text style={styles.eyebrow}>MAESTRAS RED</Text>
           <Text style={styles.greeting}>Hola{user ? `, ${user.name.split(" ")[0]}` : ""}</Text>
         </View>
-        <Pressable testID="logout-button" onPress={logout} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={20} color={colors.brandPrimary} />
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          {user?.is_admin ? (
+            <Pressable testID="admin-button" onPress={() => router.push("/admin")} style={styles.logoutButton}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.brandPrimary} />
+            </Pressable>
+          ) : null}
+          <Pressable testID="logout-button" onPress={logout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={20} color={colors.brandPrimary} />
+          </Pressable>
+        </View>
       </View>
       {notice ? <Notice text={notice} onClose={() => setNotice("")} /> : null}
       <ScrollView

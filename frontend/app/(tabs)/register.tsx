@@ -1,13 +1,14 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, Provider } from "@/src/api";
 import { PhotoPicker } from "@/src/components/photo-picker";
+import { GalleryItem, GalleryPicker, VerificationCard } from "@/src/components/provider-extras";
 import { CATEGORIES, Chip, ChipRow, Field, PrimaryButton } from "@/src/components/ui";
 import { usesNativeTabs } from "@/src/navigation";
 import { makeStyles, useTheme } from "@/src/theme";
@@ -33,6 +34,12 @@ export default function RegisterScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoPath, setPhotoPath] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [myProvider, setMyProvider] = useState<Provider | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    api.myProviders().then((list) => setMyProvider(list[0] ?? null)).catch(() => {});
+  }, []));
 
   async function onPhoto(asset: ImagePicker.ImagePickerAsset) {
     setPhotoUri(asset.uri);
@@ -68,7 +75,9 @@ export default function RegisterScreen() {
         commune: commune.trim(),
         whatsapp: whatsapp.trim(),
         ...(photoPath ? { photo_path: photoPath } : {}),
+        gallery: galleryItems.map((item) => item.path),
       });
+      setMyProvider(created);
       setDone(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos publicar tu perfil");
@@ -104,8 +113,13 @@ export default function RegisterScreen() {
         <Text style={styles.title}>Ofrece tus servicios</Text>
         <Text style={styles.subtitle}>Crea tu perfil profesional y empieza a recibir contactos por WhatsApp.</Text>
 
+        {myProvider ? <VerificationCard provider={myProvider} /> : null}
+
         <PhotoPicker testID="register-photo-picker" localUri={photoUri} uploading={photoBusy} onPick={onPhoto} />
         <Text style={{ color: colors.muted, fontSize: 12, textAlign: "center" }}>Una foto real genera más confianza y contactos.</Text>
+
+        <Text style={styles.label}>Galería de trabajos (opcional)</Text>
+        <GalleryPicker testID="register-gallery" items={galleryItems} onChange={setGalleryItems} />
 
         <Text style={styles.label}>Tu nombre</Text>
         <Field testID="register-name-input" icon="person-outline" placeholder="Ej. María González" value={name} onChangeText={setName} autoCapitalize="words" />

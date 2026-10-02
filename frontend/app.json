@@ -16,6 +16,7 @@
       "bundleIdentifier": "com.emergent.proserviceshub.i6s2pc"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
@@ -49,7 +50,8 @@
       "expo-status-bar",
       "expo-location",
       "@react-native-vector-icons/ionicons",
-      "expo-image-picker"
+      "expo-image-picker",
+      ["expo-notifications", { "icon": "./assets/images/icon.png", "color": "#3B5249" }]
     ],
     "experiments": {
       "typedRoutes": true

@@ -6,13 +6,15 @@ import { storage } from "@/src/utils/storage";
 const baseUrl = `${Constants.expoConfig?.extra?.backendUrl ?? process.env.EXPO_PUBLIC_BACKEND_URL ?? ""}/api`;
 export const TOKEN_KEY = "maestrasred_token";
 
-export type User = { id: string; name: string; email: string; plan: "free" | "premium"; photo_url?: string | null; photo_path?: string | null };
-export type Provider = { id: string; name: string; category: string; bio: string; rate: number; city: string; commune: string; whatsapp: string; rating: number; reviews_count: number; distance: number; verified: boolean; initials: string; photo_path?: string | null; reviews?: Review[] };
+export type User = { id: string; name: string; email: string; plan: "free" | "premium"; photo_url?: string | null; photo_path?: string | null; is_admin?: boolean };
+export type Provider = { id: string; name: string; category: string; bio: string; rate: number; city: string; commune: string; whatsapp: string; rating: number; reviews_count: number; distance: number; verified: boolean; initials: string; photo_path?: string | null; owner_id?: string | null; gallery?: string[]; reviews?: Review[] };
 export type Review = { id: string; user_name: string; rating: number; comment: string; created_at: string };
 export type ProvidersResult = { providers: Provider[]; limited: boolean };
 export type Conversation = { id: string; provider_id: string; provider_name: string; provider_initials: string; display_name: string; display_initials: string; role: "client" | "professional"; provider_photo?: string | null; last_message: string; updated_at: string };
 export type Message = { id: string; sender_id: string; text: string; created_at: string };
 export type PhotoAsset = { uri: string; fileName?: string | null; mimeType?: string | null };
+export type Verification = { id: string; provider_id: string; status: "pending" | "approved" | "rejected"; created_at: string };
+export type AdminVerification = Verification & { user_name: string; provider_name: string; category: string; commune: string; id_path: string; selfie_path: string };
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await storage.secureGet<string | null>(TOKEN_KEY, null);
@@ -44,7 +46,14 @@ export const api = {
   provider: (id: string) => request<Provider>(`/providers/${id}`),
   myProviders: () => request<Provider[]>("/providers/mine/list"),
   review: (id: string, payload: { rating: number; comment: string }) => request<Review>(`/providers/${id}/reviews`, { method: "POST", body: JSON.stringify(payload) }),
-  createProvider: (payload: Record<string, string | number>) => request<Provider>("/providers", { method: "POST", body: JSON.stringify(payload) }),
+  createProvider: (payload: Record<string, unknown>) => request<Provider>("/providers", { method: "POST", body: JSON.stringify(payload) }),
+  registerPush: (payload: { user_id: string; platform: string; device_token: string }) => request<{ status: string }>("/register-push", { method: "POST", body: JSON.stringify(payload) }),
+  submitVerification: (payload: { provider_id: string; id_path: string; selfie_path: string }) => request<Verification>("/verification/submit", { method: "POST", body: JSON.stringify(payload) }),
+  myVerifications: () => request<Verification[]>("/verification/mine"),
+  adminVerifications: (status = "pending") => request<AdminVerification[]>(`/admin/verifications?status=${status}`),
+  decideVerification: (id: string, approve: boolean) => request<{ status: string }>(`/admin/verifications/${id}/decision`, { method: "POST", body: JSON.stringify({ approve }) }),
+  galleryAdd: (id: string, path: string) => request<{ gallery: string[] }>(`/providers/${id}/gallery`, { method: "POST", body: JSON.stringify({ path }) }),
+  galleryRemove: (id: string, path: string) => request<{ gallery: string[] }>(`/providers/${id}/gallery`, { method: "DELETE", body: JSON.stringify({ path }) }),
   conversations: () => request<Conversation[]>("/conversations"),
   createConversation: (id: string) => request<Conversation>(`/conversations/${id}`, { method: "POST" }),
   messages: (id: string) => request<Message[]>(`/conversations/${id}/messages`),

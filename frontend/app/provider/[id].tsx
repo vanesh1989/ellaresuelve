@@ -6,7 +6,9 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, Provider } from "@/src/api";
+import { GalleryItem, GalleryPicker, GalleryStrip } from "@/src/components/provider-extras";
 import { Avatar, EmptyState, formatRate, Loader, Notice, Stars } from "@/src/components/ui";
+import { loadUser } from "@/src/session";
 import { makeStyles, useTheme } from "@/src/theme";
 
 export default function ProviderDetailScreen() {
@@ -23,11 +25,15 @@ export default function ProviderDetailScreen() {
   const [comment, setComment] = useState("");
   const [sending, setSending] = useState(false);
   const [openingChat, setOpeningChat] = useState(false);
+  const [myId, setMyId] = useState("");
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
 
   const load = useCallback(async () => {
     setError("");
     try {
-      setProvider(await api.provider(id));
+      const item = await api.provider(id);
+      setProvider(item);
+      setGalleryItems((item.gallery ?? []).map((path) => ({ path })));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos cargar el perfil");
     } finally {
@@ -36,8 +42,25 @@ export default function ProviderDetailScreen() {
   }, [id]);
 
   useEffect(() => {
+    loadUser().then((user) => setMyId(user?.id ?? ""));
     load();
   }, [load]);
+
+  async function onGalleryChange(next: GalleryItem[]) {
+    if (!provider) return;
+    const prevPaths = galleryItems.map((item) => item.path);
+    const added = next.find((item) => !prevPaths.includes(item.path));
+    const removed = prevPaths.find((path) => !next.some((item) => item.path === path));
+    setGalleryItems(next);
+    try {
+      if (added) await api.galleryAdd(provider.id, added.path);
+      if (removed) await api.galleryRemove(provider.id, removed);
+      setProvider({ ...provider, gallery: next.map((item) => item.path) });
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : "No pudimos actualizar la galería");
+      load();
+    }
+  }
 
   function openWhatsApp() {
     if (!provider) return;
@@ -128,6 +151,18 @@ export default function ProviderDetailScreen() {
                 </View>
               </View>
             </View>
+
+            {myId && provider.owner_id === myId ? (
+              <>
+                <Text style={styles.sectionTitle}>Galería de trabajos</Text>
+                <GalleryPicker testID="profile-gallery" items={galleryItems} onChange={onGalleryChange} />
+              </>
+            ) : provider.gallery && provider.gallery.length ? (
+              <>
+                <Text style={styles.sectionTitle}>Galería de trabajos</Text>
+                <GalleryStrip paths={provider.gallery} />
+              </>
+            ) : null}
 
             <Text style={styles.sectionTitle}>Reseñas{provider.reviews_count ? ` (${provider.reviews_count})` : ""}</Text>
 

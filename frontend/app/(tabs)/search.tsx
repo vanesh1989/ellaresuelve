@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, ProvidersResult, User } from "@/src/api";
 import { CATEGORIES, Chip, ChipRow, EmptyState, FreeBanner, Loader, Notice, ProviderCard } from "@/src/components/ui";
 import { usesNativeTabs } from "@/src/navigation";
-import { loadUser, saveUser } from "@/src/session";
+import { loadUser } from "@/src/session";
 import { makeStyles, useTheme } from "@/src/theme";
 
 const RATING_FILTERS = [
@@ -30,7 +30,7 @@ export default function SearchScreen() {
   const [result, setResult] = useState<ProvidersResult>({ providers: [], limited: false });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [upgrading, setUpgrading] = useState(false);
+  const [upgrading] = useState(false);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -56,18 +56,8 @@ export default function SearchScreen() {
     return () => clearTimeout(timeout);
   }, [query, category, minRating, load]);
 
-  async function upgrade() {
-    setUpgrading(true);
-    try {
-      const updated = await api.upgrade();
-      await saveUser(updated);
-      setUser(updated);
-      await load(query, category, minRating, true);
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "No pudimos actualizar tu plan");
-    } finally {
-      setUpgrading(false);
-    }
+  function upgrade() {
+    router.push("/paywall");
   }
 
   return (
